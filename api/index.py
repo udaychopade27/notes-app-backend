@@ -15,42 +15,44 @@ app.add_middleware(
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-print("DATABASE_URL loaded:", DATABASE_URL is not None)
-
 
 def get_conn():
-    try:
-        print("Attempting DB connection...")
-        conn = psycopg2.connect(
-            DATABASE_URL,
-            sslmode="require"
-        )
-        print("DB connection SUCCESS")
-        return conn
-    except Exception as e:
-        print("DB connection FAILED:", str(e))
-        raise e
+    return psycopg2.connect(
+        DATABASE_URL,
+        sslmode="require"
+    )
 
 
 @app.get("/api/notes")
 def get_notes():
-    try:
-        print("GET /api/notes called")
 
-        conn = get_conn()
-        cur = conn.cursor()
+    conn = get_conn()
+    cur = conn.cursor()
 
-        cur.execute("SELECT id, text FROM notes")
+    cur.execute("SELECT id, text FROM notes ORDER BY id DESC")
 
-        rows = cur.fetchall()
+    rows = cur.fetchall()
 
-        cur.close()
-        conn.close()
+    cur.close()
+    conn.close()
 
-        print("Query success, rows:", len(rows))
+    return [{"id": r[0], "text": r[1]} for r in rows]
 
-        return [{"id": r[0], "text": r[1]} for r in rows]
 
-    except Exception as e:
-        print("ERROR in /api/notes:", str(e))
-        return {"error": str(e)}
+@app.post("/api/notes")
+def create_note(data: dict):
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute(
+        "INSERT INTO notes(text) VALUES(%s)",
+        (data["text"],)
+    )
+
+    conn.commit()
+
+    cur.close()
+    conn.close()
+
+    return {"status": "created"}
