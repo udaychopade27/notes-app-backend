@@ -16,9 +16,11 @@ app.add_middleware(
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-
 def get_conn():
-    return psycopg2.connect(DATABASE_URL)
+    return psycopg2.connect(
+        DATABASE_URL,
+        sslmode="require"
+    )
 
 
 @app.get("/api/notes")
