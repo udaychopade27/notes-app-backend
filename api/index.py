@@ -5,7 +5,6 @@ import os
 
 app = FastAPI()
 
-# Enable CORS so React frontend can call API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,42 +15,42 @@ app.add_middleware(
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+print("DATABASE_URL loaded:", DATABASE_URL is not None)
+
+
 def get_conn():
-    return psycopg2.connect(
-        DATABASE_URL,
-        sslmode="require"
-    )
+    try:
+        print("Attempting DB connection...")
+        conn = psycopg2.connect(
+            DATABASE_URL,
+            sslmode="require"
+        )
+        print("DB connection SUCCESS")
+        return conn
+    except Exception as e:
+        print("DB connection FAILED:", str(e))
+        raise e
 
 
 @app.get("/api/notes")
 def get_notes():
-    conn = get_conn()
-    cur = conn.cursor()
+    try:
+        print("GET /api/notes called")
 
-    cur.execute("SELECT id, text FROM notes ORDER BY id DESC")
+        conn = get_conn()
+        cur = conn.cursor()
 
-    rows = cur.fetchall()
+        cur.execute("SELECT id, text FROM notes")
 
-    cur.close()
-    conn.close()
+        rows = cur.fetchall()
 
-    return [{"id": r[0], "text": r[1]} for r in rows]
+        cur.close()
+        conn.close()
 
+        print("Query success, rows:", len(rows))
 
-@app.post("/api/notes")
-def create_note(data: dict):
+        return [{"id": r[0], "text": r[1]} for r in rows]
 
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute(
-        "INSERT INTO notes(text) VALUES(%s)",
-        (data["text"],)
-    )
-
-    conn.commit()
-
-    cur.close()
-    conn.close()
-
-    return {"status": "created"}
+    except Exception as e:
+        print("ERROR in /api/notes:", str(e))
+        return {"error": str(e)}
